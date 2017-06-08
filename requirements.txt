@@ -1,0 +1,7 @@
+backtrader
+matplotlib
+numpy
+pandas
+keras
+tensorflow
+sklearn
