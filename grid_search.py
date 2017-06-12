@@ -18,7 +18,7 @@ from statsmodels.graphics.tsaplots import plot_acf
 look_back = 1
 features = 2
 
-df = pd.read_csv('eur_usd_15m.csv', usecols=[5])
+df = pd.read_csv('eur_usd_1d.csv', usecols=[5])
 df_close = df['<CLOSE>']
 dataset = df_close.values[:300]
 dataset = dataset.astype('float32')
