@@ -36,13 +36,13 @@ class SmaCross(bt.Strategy):
         print('%s, %s' % (dt.isoformat(), txt))
 
     def notify_order(self, order):
-        print('{}: Order ref: {} / Type {} / Status {}'.format(
-            self.data.datetime.date(0),
-            order.ref, 'Buy' * order.isbuy() or 'Sell',
-            order.getstatusname()))
-
-        if order.status == order.Completed:
-            self.holdstart = len(self)
+        if order.getstatusname() not in ['Accepted', 'Submitted']:
+            print('{}: Order ref: {} / Type: {} / Status: {} / Price: {:.4f}'.format(
+                self.data.datetime.date(0),
+                order.ref, 'Buy' * order.isbuy() or 'Sell',
+                order.getstatusname(),
+                order.price
+            ))
 
         if not order.alive() and order.ref in self.orefs:
             self.orefs.remove(order.ref)
@@ -79,6 +79,27 @@ class SmaCross(bt.Strategy):
                 valid2 = valid3 = timedelta(self.p.limdays2)
 
                 os = self.buy_bracket(
+                    price=p1, valid=valid1,
+                    stopprice=p2, stopargs=dict(valid=valid2),
+                    limitprice=p3, limitargs=dict(valid=valid3), )
+
+                self.orefs = [o.ref for o in os]
+
+            if predicted_close < prev_predicted_close:
+                close = self.data.close[0]
+                p1 = close * (1.0 + self.p.limit)
+                p2 = p1 + 0.02 * close
+                p3 = p1 - 0.06 * close
+                print('p1: {:.4f}, p2: {:.4f}, p3: {:.4f}'.format(
+                    p1,
+                    p2,
+                    p3
+                ))
+
+                valid1 = timedelta(self.p.limdays)
+                valid2 = valid3 = timedelta(self.p.limdays2)
+
+                os = self.sell_bracket(
                     price=p1, valid=valid1,
                     stopprice=p2, stopargs=dict(valid=valid2),
                     limitprice=p3, limitargs=dict(valid=valid3), )
