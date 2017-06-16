@@ -65,7 +65,7 @@ class SimpleSMAStrategy(bt.SignalStrategy):
                     limitprice=p3, limitargs=dict(valid=valid3), )
 
                 self.orefs = [o.ref for o in os]
-        else:
+
             if self.dataclose[0] < self.sma[0]:
                 close = self.data.close[0]
                 p1 = close * (1.0 + self.p.limit)
@@ -111,7 +111,7 @@ data = bt.feeds.GenericCSVData(
 # data = bt.feeds.YahooFinanceData(dataname='YHOO', fromdate=datetime(2011, 1, 1),
 #                                  todate=datetime(2012, 12, 31))
 cerebro.adddata(data)
-cerebro.addsizer(bt.sizers.FixedSize, stake=10)
+cerebro.addsizer(bt.sizers.FixedSize, stake=50)
 
 # cerebro.addstrategy(SimpleSMAStrategy)
 # Print out the starting conditions
