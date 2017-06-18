@@ -7,3 +7,4 @@ tensorflow
 sklearn
 statsmodels
 h5py
+evostra
