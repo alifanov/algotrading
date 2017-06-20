@@ -1,93 +1,51 @@
+from __future__ import print_function
 import numpy as np
-import backtrader as bt
-
-from evostra import EvolutionStrategy
-from keras.models import Model, Input, Sequential
-from keras.layers import Dense, Activation
+import multiprocessing as mp
 
 
-class ESStrategy(bt.Strategy):
-    params = {
-        'model': None
-    }
+class EvolutionStrategy(object):
 
-    def __init__(self):
-        self.order = None
-        self.dataclose = self.datas[0].close
-        self.datavol = self.datas[0].volume
+    def __init__(self, weights, get_reward_func, population_size=50, sigma=0.1, learning_rate=0.001):
+        np.random.seed(0)
+        self.weights = weights
+        self.get_reward = get_reward_func
+        self.POPULATION_SIZE = population_size
+        self.SIGMA = sigma
+        self.LEARNING_RATE = learning_rate
 
-    def stop(self):
-        cash = self.broker.getvalue()
-        print('Result cash: {}'.format(cash))
 
-    def notify_order(self, order):
-        if order.status in [order.Submitted, order.Accepted]:
-            return
+    def _get_weights_try(self, w, p):
+        weights_try = []
+        for index, i in enumerate(p):
+            jittered = self.SIGMA*i
+            weights_try.append(w[index] + jittered)
+        return weights_try
 
-        self.order = None
 
-    def next(self):
-        if self.order:
-            return
+    def get_weights(self):
+        return self.weights
 
-        input_data = []
-        for i in range(7):
-            input_data.append(self.dataclose[i-6])
-            input_data.append(self.datavol[i-6])
-        inp = np.asanyarray(input_data)
-        inp = np.expand_dims(inp, 0)
 
-        predict = self.p.model.predict(inp)[0]
-        predict = np.argmax(predict)
+    def run(self, iterations, print_step=10):
+        for iteration in range(iterations):
 
-        if not self.position:
-            if predict == 0:
-                self.order = self.buy()
-        else:
-            if predict == 1:
-                self.order = self.sell()
+            if iteration % print_step == 0:
+                print('iter %d. reward: %f' % (iteration, self.get_reward(self.weights)))
 
-        if not self.position:
-            if predict == 1:
-                self.order = self.sell()
-        else:
-            if predict == 0:
-                self.order = self.buy()
+            population = []
+            rewards = np.zeros(self.POPULATION_SIZE)
+            for i in range(self.POPULATION_SIZE):
+                x = []
+                for w in self.weights:
+                    x.append(np.random.randn(*w.shape))
+                population.append(x)
 
-model = Sequential()
-model.add(Dense(128, input_dim=14, activation='relu'))
-model.add(Dense(256, activation='relu'))
-model.add(Dense(512, activation='relu'))
-model.add(Dense(1024, activation='relu'))
-model.add(Dense(2, activation='relu'))
+            for i in range(self.POPULATION_SIZE):
+                weights_try = self._get_weights_try(self.weights, population[i])
+                rewards[i] = self.get_reward(weights_try)
 
-model.compile(optimizer='Adam', loss='mse')
+            rewards = (rewards - np.mean(rewards)) / np.std(rewards)
 
-data = bt.feeds.GenericCSVData(
-    dataname='eur_usd_1d.csv',
-    separator=',',
-    dtformat=('%Y%m%d'),
-    tmformat=('%H%M00'),
-    datetime=0,
-    time=1,
-    open=2,
-    high=3,
-    low=4,
-    close=5,
-    volume=6,
-    openinterest=-1
-)
-
-def get_reward(weights):
-    model.set_weights(weights)
-    cerebro = bt.Cerebro()
-    cerebro.addstrategy(ESStrategy, model=model)
-    cerebro.adddata(data)
-    cerebro.broker.setcash(1000)
-    cerebro.addsizer(bt.sizers.FixedSize, stake=50)
-
-    cerebro.run()
-    return cerebro.broker.getvalue()
-
-es = EvolutionStrategy(model.get_weights(), get_reward, population_size=50, sigma=0.1, learning_rate=0.001)
-es.run(1000, print_step=100)
+            for index, w in enumerate(self.weights):
+                A = np.array([p[index] for p in population])
+                self.weights[index] = w + self.LEARNING_RATE/(self.POPULATION_SIZE*self.SIGMA) * np.dot(A.T, rewards).T
