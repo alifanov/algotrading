@@ -68,10 +68,10 @@ class ESStrategy(bt.Strategy):
             if predict == 0:
                 self.order = self.buy()
 
+
 model = Sequential()
 model.add(Dense(128, input_dim=14, activation='relu'))
 model.add(Dense(256, activation='relu'))
-model.add(Dense(128, activation='relu'))
 model.add(Dense(2, activation='relu'))
 
 model.compile(optimizer='Adam', loss='mse')
@@ -91,6 +91,7 @@ data = bt.feeds.GenericCSVData(
     openinterest=-1
 )
 
+
 def get_reward(weights):
     model.set_weights(weights)
     cerebro = bt.Cerebro()
@@ -100,7 +101,8 @@ def get_reward(weights):
     cerebro.addsizer(bt.sizers.FixedSize, stake=50)
 
     cerebro.run()
-    return cerebro.broker.getvalue()
+    return cerebro.broker.getvalue() - 5000.0
 
-es = EvolutionStrategy(model.get_weights(), get_reward, population_size=50, sigma=0.2, learning_rate=0.001)
+
+es = EvolutionStrategy(model.get_weights(), get_reward, population_size=50, sigma=0.1, learning_rate=0.1)
 es.run(1000, print_step=1)
