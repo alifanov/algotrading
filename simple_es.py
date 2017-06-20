@@ -44,10 +44,10 @@ class ESStrategy(bt.Strategy):
             input_data.append(self.dataclose[i - 6])
         for i in range(7):
             input_data.append(self.datavol[i - 6])
-        for i in range(7):
-            input_data.append(self.sma[i - 6])
-        for i in range(7):
-            input_data.append(self.rsi[i-6])
+        # for i in range(7):
+        #     input_data.append(self.sma[i - 6])
+        # for i in range(7):
+        #     input_data.append(self.rsi[i-6])
         inp = np.asanyarray(input_data)
         inp = np.expand_dims(inp, 0)
 
@@ -69,7 +69,7 @@ class ESStrategy(bt.Strategy):
                 self.order = self.buy()
 
 model = Sequential()
-model.add(Dense(128, input_dim=28, activation='relu'))
+model.add(Dense(128, input_dim=14, activation='relu'))
 model.add(Dense(256, activation='relu'))
 model.add(Dense(128, activation='relu'))
 model.add(Dense(2, activation='relu'))
