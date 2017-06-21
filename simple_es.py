@@ -25,9 +25,9 @@ class ESStrategy(bt.Strategy):
             period=self.p.rsi_period
         )
 
-    # def stop(self):
-    #     cash = self.broker.getvalue()
-    #     print('Result cash: {}'.format(cash))
+    def stop(self):
+        cash = self.broker.getvalue()
+        print('Result cash: {}'.format(cash))
 
     def notify_order(self, order):
         if order.status in [order.Submitted, order.Accepted]:
@@ -39,11 +39,11 @@ class ESStrategy(bt.Strategy):
         if self.order:
             return
 
-        input_data = []
-        for i in range(7):
-            input_data.append(self.dataclose[i - 6])
-        for i in range(7):
-            input_data.append(self.datavol[i - 6])
+        input_data = [self.dataclose[0], self.datavol[0]]
+        # for i in range(7):
+        #     input_data.append(self.dataclose[i - 6])
+        # for i in range(7):
+        #     input_data.append(self.datavol[i - 6])
         # for i in range(7):
         #     input_data.append(self.sma[i - 6])
         # for i in range(7):
@@ -54,6 +54,9 @@ class ESStrategy(bt.Strategy):
         predict = self.p.model.predict(inp)[0]
         predict = np.argmax(predict)
 
+        if predict == 2:
+            return
+
         if not self.position:
             if predict == 0:
                 self.order = self.buy()
@@ -68,13 +71,6 @@ class ESStrategy(bt.Strategy):
             if predict == 0:
                 self.order = self.buy()
 
-
-model = Sequential()
-model.add(Dense(128, input_dim=14, activation='relu'))
-model.add(Dense(256, activation='relu'))
-model.add(Dense(2, activation='relu'))
-
-model.compile(optimizer='Adam', loss='mse')
 
 data = bt.feeds.GenericCSVData(
     dataname='eur_usd_1d.csv',
@@ -91,9 +87,19 @@ data = bt.feeds.GenericCSVData(
     openinterest=-1
 )
 
+def get_model():
+    model = Sequential()
+    model.add(Dense(128, input_dim=2, activation='relu'))
+    # model.add(Dense(256, activation='relu'))
+    model.add(Dense(3, activation='relu'))
+
+    model.compile(optimizer='Adam', loss='mse')
+    return model
 
 def get_reward(weights):
+    model = get_model()
     model.set_weights(weights)
+
     cerebro = bt.Cerebro()
     cerebro.addstrategy(ESStrategy, model=model)
     cerebro.adddata(data)
@@ -104,5 +110,7 @@ def get_reward(weights):
     return cerebro.broker.getvalue() - 5000.0
 
 
-es = EvolutionStrategy(model.get_weights(), get_reward, population_size=50, sigma=0.1, learning_rate=0.1)
+model = get_model()
+
+es = EvolutionStrategy(model.get_weights(), get_reward, population_size=50, sigma=0.2, learning_rate=0.01)
 es.run(1000, print_step=1)
