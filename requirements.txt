@@ -9,3 +9,4 @@ statsmodels
 h5py
 evostra
 gym[all]
+poloniex
