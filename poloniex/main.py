@@ -21,13 +21,17 @@ class Poloniex():
 
 polo = Poloniex()
 
-start_time = time.mktime((datetime.now() - timedelta(days=7)).timetuple())
+start_time = time.mktime((datetime.now() - timedelta(days=30)).timetuple())
 end_time = time.mktime((datetime.now()).timetuple())
 
 charts = polo.returnChartData('BTC_ETC', period=300, start=start_time, end=end_time)
 df = pd.DataFrame(charts)
-close_df = df[['date', 'close']]
-close_df.set_index(['date'], inplace=True)
-close_df['emwa'] = pd.ewma(close_df, span=10, min_periods=10)
-close_df.plot()
-plt.show()
+df['date'] = pd.to_datetime(df['date'], unit='s')
+df.to_csv('btc_etc.csv')
+print(df)
+
+# close_df = df[['date', 'close']]
+# close_df.set_index(['date'], inplace=True)
+# close_df['emwa'] = pd.ewma(close_df, span=10, min_periods=10)
+# close_df.plot()
+
