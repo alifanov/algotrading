@@ -10,3 +10,7 @@ h5py
 evostra
 gym[all]
 poloniex
+pyalgotrade
+git+https://github.com/ematvey/pybacktest.git
+pandas_datareader
+plotly
