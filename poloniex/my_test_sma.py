@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+from stockstats import StockDataFrame
 
 
 class SMAIndicator:
@@ -9,7 +10,8 @@ class SMAIndicator:
         self.period = period
         self.title = title
 
-    def get_data(self, ds):
+    def get_data(self, df, field_name):
+        ds = df[field_name]
         return ds.rolling(center=False, window=self.period).mean()
 
 
@@ -18,19 +20,51 @@ class MomentumIndicator:
         self.period = period
         self.title = title
 
-    def get_data(self, ds):
+    def get_data(self, df, field_name):
+        ds = df[field_name]
         if len(ds) > self.period - 1:
             return ds[-1] * 100 / ds[-self.period]
         return None
 
 
+class RSIIndicator:
+    def __init__(self, period=14, title='rsi'):
+        self.period = period
+        self.title = title
+
+    def get_data(self, df, field_name):
+        ds = df[field_name]
+        delta = ds.diff()
+        d_up, d_down = delta.copy(), delta.copy()
+        d_up[d_up < 0] = 0
+        d_down[d_down > 0] = 0
+
+        rol_up = d_up.rolling(center=False, window=self.period).mean()
+        rol_down = d_down.rolling(center=False, window=self.period).mean().abs()
+
+        rs = rol_up / rol_down
+        rsi = 100.0 - (100.0 / (1.0 + rs))
+        return rsi
+
+
+class EMAIndicator:
+    def __init__(self, period, title='ema'):
+        self.period = period
+        self.title = title
+
+    def get_data(self, df, field_name):
+        return df['{}_{}_ema'.format(field_name, self.period)]
+
+
 class DataSeries:
-    def __init__(self, data, indicators=[]):
-        self.data = data
+    def __init__(self, data):
+        self.data = StockDataFrame.retype(data.copy())
         self.index = 0
-        self.indicators = indicators
-        for indicator in self.indicators:
-            self.data[indicator.title] = indicator.get_data(self.data['close'])
+        self.indicators = []
+
+    def add_indicator(self, indicator):
+        self.data[indicator.title] = indicator.get_data(self.data, 'close')
+        self.indicators.append(indicator)
 
     def __getitem__(self, index):
         return self.data.iloc[index + self.index]
@@ -71,16 +105,11 @@ class Trade:
 
 
 class BT:
-    def __init__(self, data_path, balance=1000.0):
-        self.ds = DataSeries(pd.read_csv(data_path).rename(columns={
-            'Close': 'close',
-            'Date time': 'datetime',
-            'Open': 'open',
-            'High': 'high',
-            'Low': 'low',
-            'Volume': 'volume'
-        }), indicators=[SMAIndicator(period=21)])
+    def __init__(self, ds, balance=1000.0):
+        self.ds = ds
         self.balance = balance
+        self.start_balance = balance
+        self.end_balance = balance
         self.position = None
         self.trades = []
 
@@ -93,7 +122,6 @@ class BT:
     def sell(self, price):
         self.position.close(self.ds.index, price)
         self.balance += self.position.get_profit()
-        # print('SELL: price {} with profit {}'.format(price, self.position.get_profit()))
         self.position = None
 
     def process_bar(self):
@@ -109,9 +137,19 @@ class BT:
             if self.ds[0].close - self.ds[-1].close < 0:
                 self.sell(self.ds[0].close)
 
+    def stop(self):
+        self.end_balance = self.balance
+
+    def get_profit(self):
+        return self.end_balance - self.start_balance
+
+    def get_roi(self):
+        return 1.0*(self.end_balance - self.start_balance)/self.start_balance
+
     def run(self):
         for _ in self.ds:
             self.process_bar()
+        self.stop()
 
     def plot(self):
         data = self.ds.data
@@ -121,6 +159,7 @@ class BT:
             headers.append(ind.title)
         data = data[headers]
         data.plot()
+        # data.plot(marker='o', markersize=4)
 
         trade_open_datetimes = [trade.open_datetime for trade in self.trades]
         trade_open_prices = [trade.open_price for trade in self.trades]
@@ -132,16 +171,127 @@ class BT:
 
         plt.show()
 
-if __name__ == "__main__":
-    bt = BT('btc_etc.csv')
-    start_balance = bt.balance
+
+class SMABT(BT):
+    def __init__(self, ds, balance, period):
+        super(SMABT, self).__init__(ds, balance)
+        self.ds.add_indicator(SMAIndicator(period=period))
+
+    def process_bar(self):
+        if not self.position:
+            if self.ds[0].sma and self.ds[-1].close < self.ds[-1].sma:
+                if self.ds[0].close > self.ds[0].sma:
+                    self.buy(self.ds[0].close, 1000.0)
+        else:
+            if self.ds[0].sma and self.ds[-1].close > self.ds[-1].sma:
+                if self.ds[0].close < self.ds[0].sma:
+                    self.sell(self.ds[0].close)
+
+
+class EMABT(BT):
+    def __init__(self, ds, balance, period):
+        super(EMABT, self).__init__(ds, balance)
+        self.ds.add_indicator(EMAIndicator(period=period))
+
+    def process_bar(self):
+        if not self.position:
+            if self.ds[0].ema and self.ds[-1].close < self.ds[-1].ema:
+                if self.ds[0].close > self.ds[0].ema:
+                    self.buy(self.ds[0].close, 1000.0)
+        else:
+            if self.ds[-1].close < self.ds[0].close:
+                self.sell(self.ds[0].close)
+
+
+class RSIBT(BT):
+    def __init__(self, ds, balance, period):
+        super(RSIBT, self).__init__(ds, balance)
+        self.ds.add_indicator(RSIIndicator(period=period))
+
+    def process_bar(self):
+        if not self.position:
+            if self.ds[0].rsi:
+                if self.ds[0].rsi > 20.0 and self.ds[-1].rsi < 20.0:
+                    self.buy(self.ds[0].close, 1000.0)
+        else:
+            if self.ds[0].rsi < 80.0 and self.ds[-1].rsi > 80.0:
+                self.sell(self.ds[0].close)
+
+def simple_sma():
+    df = pd.read_csv('btc_etc.csv').rename(columns={
+        'Close': 'close',
+        'Date time': 'datetime',
+        'Open': 'open',
+        'High': 'high',
+        'Low': 'low',
+        'Volume': 'volume'
+    })
+    ds = DataSeries(df)
+    bt = SMABT(ds, balance=1000.0, period=200)
     bt.run()
-    end_balance = bt.balance
-    profit = end_balance - start_balance
-    roi = 1.0*profit/start_balance
-
-    print('Start balance:\t${:.2f}'.format(start_balance))
-    print('End balance:\t${:.2f}'.format(end_balance))
-    print('Profit:\t\t${:.2f} ({:+.2%})'.format(profit, roi))
-
+    print('Profit: ${:.2f}'.format(bt.get_profit()))
     # bt.plot()
+
+def optimize_params():
+    df = pd.read_csv('btc_etc.csv').rename(columns={
+        'Close': 'close',
+        'Date time': 'datetime',
+        'Open': 'open',
+        'High': 'high',
+        'Low': 'low',
+        'Volume': 'volume'
+    })
+
+    best_period = 0
+    best_profit = 0
+    for n in range(3, 200):
+        ds = DataSeries(df)
+        bt = RSIBT(ds, balance=1000.0, period=n)
+        bt.run()
+        if best_profit < bt.get_profit():
+            best_profit = bt.get_profit()
+            best_period = n
+
+        # print('Period: {}'.format(n))
+        # print('Profit:\t\t${:.2f} ({:+.2%})'.format(bt.get_profit(), bt.get_roi()))
+        # print('---')
+    print('RSI best period')
+    print('Period: {}'.format(best_period))
+    print('Profit: ${:.2f}'.format(best_profit))
+
+    best_period = 0
+    best_profit = 0
+    for period in range(2, 200):
+        ds = DataSeries(df)
+        bt = SMABT(ds, balance=1000.0, period=n)
+        bt.run()
+        if best_profit < bt.get_profit():
+            best_profit = bt.get_profit()
+            best_period = n
+
+        # print('Period: {}'.format(n))
+        # print('Profit:\t\t${:.2f} ({:+.2%})'.format(bt.get_profit(), bt.get_roi()))
+        # print('---')
+    print('SMA best period')
+    print('Period: {}'.format(best_period))
+    print('Profit: ${:.2f}'.format(best_profit))
+
+def integrate_stockstats():
+    df = pd.read_csv('btc_etc.csv').rename(columns={
+        'Close': 'close',
+        'Date time': 'datetime',
+        'Open': 'open',
+        'High': 'high',
+        'Low': 'low',
+        'Volume': 'volume'
+    })
+    ds = DataSeries(df)
+    bt = EMABT(ds, 1000.0, 200)
+    bt.run()
+    print('Profit: ${:.2f}'.format(bt.get_profit()))
+    bt.plot()
+
+if __name__ == "__main__":
+    # simple_sma()
+    # optimize_params()
+    integrate_stockstats()
