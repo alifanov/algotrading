@@ -67,7 +67,7 @@ class DataSeries:
         self.indicators.append(indicator)
 
     def __getitem__(self, index):
-        return self.data.iloc[index + self.index]
+        return self.data.iloc[index + self.index, :]
 
     def __iter__(self):
         self.index = 0
@@ -286,10 +286,12 @@ def integrate_stockstats():
         'Volume': 'volume'
     })
     ds = DataSeries(df)
+
     bt = EMABT(ds, 1000.0, 200)
     bt.run()
+
     print('Profit: ${:.2f}'.format(bt.get_profit()))
-    bt.plot()
+    # bt.plot()
 
 if __name__ == "__main__":
     # simple_sma()
