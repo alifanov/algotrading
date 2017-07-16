@@ -1,3 +1,5 @@
+import collections
+
 import pandas as pd
 import matplotlib.pyplot as plt
 from stockstats import StockDataFrame
@@ -56,29 +58,39 @@ class EMAIndicator:
         return df['{}_{}_ema'.format(field_name, self.period)]
 
 
+class DataPoint:
+    def __init__(self, dt):
+        self.dt = dt
+
+    def __getattr__(self, key):
+        return self.dt[key]
+
+
 class DataSeries:
     def __init__(self, data):
         self.data = StockDataFrame.retype(data.copy())
         self.index = 0
         self.indicators = []
+        self._data = self.data.to_dict(orient='index')
 
     def add_indicator(self, indicator):
         self.data[indicator.title] = indicator.get_data(self.data, 'close')
         self.indicators.append(indicator)
+        self._data = self.data.to_dict(orient='index')
 
     def __getitem__(self, index):
-        return self.data.iloc[index + self.index, :]
+        return DataPoint(self._data[index + self.index])
 
     def __iter__(self):
         self.index = 0
         return self
 
     def __next__(self):
-        value = self.data.iloc[self.index]
+        value = self._data[self.index]
         self.index += 1
         if self.index >= self.data.shape[0]:
             raise StopIteration
-        return value
+        return DataPoint(value)
 
 
 class Trade:
@@ -188,6 +200,21 @@ class SMABT(BT):
                     self.sell(self.ds[0].close)
 
 
+class RSIBT(BT):
+    def __init__(self, ds, balance, period):
+        super(RSIBT, self).__init__(ds, balance)
+        self.ds.add_indicator(RSIIndicator(period=period))
+
+    def process_bar(self):
+        if not self.position:
+            if self.ds[0].rsi:
+                if self.ds[0].rsi > 20.0 and self.ds[-1].rsi < 20.0:
+                    self.buy(self.ds[0].close, 1000.0)
+        else:
+            if self.ds[0].rsi < 80.0 and self.ds[-1].rsi > 80.0:
+                self.sell(self.ds[0].close)
+
+
 class EMABT(BT):
     def __init__(self, ds, balance, period):
         super(EMABT, self).__init__(ds, balance)
@@ -203,20 +230,6 @@ class EMABT(BT):
                 self.sell(self.ds[0].close)
 
 
-class RSIBT(BT):
-    def __init__(self, ds, balance, period):
-        super(RSIBT, self).__init__(ds, balance)
-        self.ds.add_indicator(RSIIndicator(period=period))
-
-    def process_bar(self):
-        if not self.position:
-            if self.ds[0].rsi:
-                if self.ds[0].rsi > 20.0 and self.ds[-1].rsi < 20.0:
-                    self.buy(self.ds[0].close, 1000.0)
-        else:
-            if self.ds[0].rsi < 80.0 and self.ds[-1].rsi > 80.0:
-                self.sell(self.ds[0].close)
-
 def simple_sma():
     df = pd.read_csv('btc_etc.csv').rename(columns={
         'Close': 'close',
@@ -231,6 +244,7 @@ def simple_sma():
     bt.run()
     print('Profit: ${:.2f}'.format(bt.get_profit()))
     # bt.plot()
+
 
 def optimize_params():
     df = pd.read_csv('btc_etc.csv').rename(columns={
@@ -275,6 +289,7 @@ def optimize_params():
     print('SMA best period')
     print('Period: {}'.format(best_period))
     print('Profit: ${:.2f}'.format(best_profit))
+
 
 def integrate_stockstats():
     df = pd.read_csv('btc_etc.csv').rename(columns={
