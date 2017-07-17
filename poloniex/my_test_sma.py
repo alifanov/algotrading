@@ -5,22 +5,29 @@ import matplotlib.pyplot as plt
 from stockstats import StockDataFrame
 
 
-class SMAIndicator:
-    title = 'sma'
-
-    def __init__(self, period, title='sma'):
-        self.period = period
+class BaseIndicator:
+    def __init__(self, title='', draw_inline=True):
         self.title = title
+        self.draw_inline = draw_inline
+
+    def draw_extra_charts(self, *args, **kwargs):
+        pass
+
+
+class SMAIndicator(BaseIndicator):
+    def __init__(self, period, title='sma'):
+        super(SMAIndicator, self).__init__(title)
+        self.period = period
 
     def get_data(self, df, field_name):
         ds = df[field_name]
         return ds.rolling(center=False, window=self.period).mean()
 
 
-class MomentumIndicator:
+class MomentumIndicator(BaseIndicator):
     def __init__(self, period=14, title='momentum'):
+        super(MomentumIndicator, self).__init__(title)
         self.period = period
-        self.title = title
 
     def get_data(self, df, field_name):
         ds = df[field_name]
@@ -29,10 +36,14 @@ class MomentumIndicator:
         return None
 
 
-class RSIIndicator:
+class RSIIndicator(BaseIndicator):
     def __init__(self, period=14, title='rsi'):
+        super(RSIIndicator, self).__init__(title, draw_inline=False)
         self.period = period
-        self.title = title
+
+    def draw_extra_charts(self, axe):
+        axe.axhline(y=20, xmin=0, xmax=1, c='red', zorder=0, linewidth=1)
+        axe.axhline(y=80, xmin=0, xmax=1, c='green', zorder=0, linewidth=1)
 
     def get_data(self, df, field_name):
         ds = df[field_name]
@@ -49,10 +60,10 @@ class RSIIndicator:
         return rsi
 
 
-class EMAIndicator:
+class EMAIndicator(BaseIndicator):
     def __init__(self, period, title='ema'):
+        super(EMAIndicator, self).__init__(title)
         self.period = period
-        self.title = title
 
     def get_data(self, df, field_name):
         return df['{}_{}_ema'.format(field_name, self.period)]
@@ -167,10 +178,23 @@ class BT:
         data = self.ds.data
         data = data.set_index('datetime')
         headers = ['close']
+        outline_indicators = []
+        outline_data = {}
         for ind in self.ds.indicators:
-            headers.append(ind.title)
+            if ind.draw_inline:
+                headers.append(ind.title)
+            else:
+                outline_indicators.append(ind)
+                outline_data[ind.title] = data[ind.title]
+                data.drop(ind.title, inplace=True, axis=1)
+
         data = data[headers]
-        data.plot()
+        fig, axes = plt.subplots(nrows=len(outline_indicators) + 1, ncols=1)
+        data.plot(ax=axes[0], sharex=True)
+        for i, oi in enumerate(outline_indicators):
+            outline_data[oi.title].plot(ax=axes[i+1], sharex=True)
+            oi.draw_extra_charts(axes[i+1])
+
         # data.plot(marker='o', markersize=4)
 
         trade_open_datetimes = [trade.open_datetime for trade in self.trades]
@@ -246,6 +270,22 @@ def simple_sma():
     # bt.plot()
 
 
+def simple_rsi():
+    df = pd.read_csv('btc_etc.csv').rename(columns={
+        'Close': 'close',
+        'Date time': 'datetime',
+        'Open': 'open',
+        'High': 'high',
+        'Low': 'low',
+        'Volume': 'volume'
+    })
+    ds = DataSeries(df)
+    bt = RSIBT(ds, balance=1000.0, period=200)
+    bt.run()
+    print('Profit: ${:.2f}'.format(bt.get_profit()))
+    bt.plot()
+
+
 def optimize_params():
     df = pd.read_csv('btc_etc.csv').rename(columns={
         'Close': 'close',
@@ -310,5 +350,6 @@ def integrate_stockstats():
 
 if __name__ == "__main__":
     # simple_sma()
+    simple_rsi()
     # optimize_params()
-    integrate_stockstats()
+    # integrate_stockstats()
