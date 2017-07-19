@@ -1,8 +1,25 @@
-import collections
+import time
+import numpy as np
+
+from es import EvolutionStrategy
+from keras.models import Model, Input, Sequential
+from keras.layers import Dense, Activation
 
 import pandas as pd
 import matplotlib.pyplot as plt
 from stockstats import StockDataFrame
+
+
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+
+        print('%r %2.4f sec' % (method.__name__, te - ts))
+        return result
+
+    return timed
 
 
 class BaseIndicator:
@@ -82,22 +99,30 @@ class DataSeries:
         self.data = StockDataFrame.retype(data.copy())
         self.index = 0
         self.indicators = []
-        self._data = self.data.to_dict(orient='index')
+        self.data.set_index('index')
+        data_dict = self.data.to_dict(orient='split')
+        self._data = data_dict['data']
+        self._columns = data_dict['columns']
 
     def add_indicator(self, indicator):
         self.data[indicator.title] = indicator.get_data(self.data, 'close')
         self.indicators.append(indicator)
-        self._data = self.data.to_dict(orient='index')
+        data_dict = self.data.to_dict(orient='split')
+        self._data = data_dict['data']
+        self._columns = data_dict['columns']
+
+    def get_dot(self, index):
+        return {k: v for k,v in zip(self._columns, self._data[index])}
 
     def __getitem__(self, index):
-        return DataPoint(self._data[index + self.index])
+        return DataPoint(self.get_dot(index + self.index))
 
     def __iter__(self):
         self.index = 0
         return self
 
     def __next__(self):
-        value = self._data[self.index]
+        value = self.get_dot(self.index)
         self.index += 1
         if self.index >= self.data.shape[0]:
             raise StopIteration
@@ -148,17 +173,17 @@ class BT:
         self.position = None
 
     def process_bar(self):
-        # print('Price: {} SMA: {}'.format(self.ds[0].close, self.ds[0].sma))
-        if not self.position:
-            current_diff = self.ds[0].close - self.ds[-1].close
-            prev_diff = self.ds[-1].close - self.ds[-2].close
-            prev_prev_diff = self.ds[-2].close - self.ds[-3].close
-            if prev_prev_diff < 0 and prev_diff > 0 and current_diff > 0 and self.ds[0].volume > 5.0:
-                # print('BUY: price {} with {} shares on volume {}'.format(self.ds[0].close, 1000.0, self.ds[0].volume))
-                self.buy(self.ds[0].close, 1000.0)
-        else:
-            if self.ds[0].close - self.ds[-1].close < 0:
-                self.sell(self.ds[0].close)
+        pass
+        # if not self.position:
+        #     current_diff = self.ds[0].close - self.ds[-1].close
+        #     prev_diff = self.ds[-1].close - self.ds[-2].close
+        #     prev_prev_diff = self.ds[-2].close - self.ds[-3].close
+        #     if prev_prev_diff < 0 and prev_diff > 0 and current_diff > 0 and self.ds[0].volume > 5.0:
+        #         # print('BUY: price {} with {} shares on volume {}'.format(self.ds[0].close, 1000.0, self.ds[0].volume))
+        #         self.buy(self.ds[0].close, 1000.0)
+        # else:
+        #     if self.ds[0].close - self.ds[-1].close < 0:
+        #         self.sell(self.ds[0].close)
 
     def stop(self):
         self.end_balance = self.balance
@@ -283,7 +308,7 @@ def simple_rsi():
     bt = RSIBT(ds, balance=1000.0, period=200)
     bt.run()
     print('Profit: ${:.2f}'.format(bt.get_profit()))
-    bt.plot()
+    # bt.plot()
 
 
 def optimize_params():
@@ -331,6 +356,62 @@ def optimize_params():
     print('Profit: ${:.2f}'.format(best_profit))
 
 
+def get_model():
+    model = Sequential()
+    model.add(Dense(16, input_dim=12, activation='relu'))
+    # model.add(Dense(256, activation='relu'))
+    model.add(Dense(3, activation='relu'))
+
+    model.compile(optimizer='Adam', loss='mse')
+    return model
+
+
+class NNBT(BT):
+    def __init__(self, ds, balance, weights):
+        super(NNBT, self).__init__(ds, balance)
+        self.model = get_model()
+        self.model.set_weights(weights)
+
+    def process_bar(self):
+        x_data = []
+        for i in range(12):
+            x_data.append(self.ds[i-11].close)
+        inp = np.asanyarray(x_data)
+        inp = np.expand_dims(inp, 0)
+
+        prediction = self.model.predict(inp)[0]
+        prediction = np.argmax(prediction)
+        if prediction == 0:
+            if not self.position:
+                self.buy(self.ds[0].close, 1000.0)
+        if prediction == 2:
+            if self.position:
+                self.sell(self.ds[0].close)
+
+
+def simple_es():
+    df = pd.read_csv('btc_etc.csv').rename(columns={
+        'Close': 'close',
+        'Date time': 'datetime',
+        'Open': 'open',
+        'High': 'high',
+        'Low': 'low',
+        'Volume': 'volume'
+    })
+
+    @timeit
+    def get_reward(weights, df):
+        ds = DataSeries(df)
+        bt = NNBT(ds, balance=1000.0, weights=weights)
+        bt.run()
+        return bt.get_profit() - 200.0
+
+    model = get_model()
+
+    es = EvolutionStrategy(model.get_weights(), get_reward, population_size=10, sigma=0.1, learning_rate=0.001, get_reward_func_args=[df])
+    es.run(1000, print_step=1)
+
+
 def integrate_stockstats():
     df = pd.read_csv('btc_etc.csv').rename(columns={
         'Close': 'close',
@@ -350,6 +431,7 @@ def integrate_stockstats():
 
 if __name__ == "__main__":
     # simple_sma()
-    simple_rsi()
+    # simple_rsi()
     # optimize_params()
     # integrate_stockstats()
+    simple_es()
