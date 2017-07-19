@@ -7,14 +7,16 @@ from es import EvolutionStrategy
 from keras.models import Sequential
 from keras.layers import Dense
 
+
 def get_model():
     model = Sequential()
-    model.add(Dense(128, input_dim=4, activation='relu'))
+    model.add(Dense(16, input_dim=4, activation='relu'))
     # model.add(Dense(256, activation='relu'))
     model.add(Dense(2, activation='relu'))
 
     model.compile(optimizer='Adam', loss='mse')
     return model
+
 
 def get_reward(weights):
     model = get_model()
@@ -34,6 +36,6 @@ def get_reward(weights):
 
 model = get_model()
 
-es = EvolutionStrategy(model.get_weights(), get_reward, population_size=50, sigma=0.2, learning_rate=0.01)
+es = EvolutionStrategy(model.get_weights(), get_reward, population_size=50, sigma=0.1, learning_rate=0.001)
 es.run(1000, print_step=1)
 
