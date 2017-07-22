@@ -15,3 +15,4 @@ git+https://github.com/ematvey/pybacktest.git
 pandas_datareader
 plotly
 stockstats
+keras-rl

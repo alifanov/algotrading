@@ -1,3 +1,4 @@
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from stockstats import StockDataFrame
@@ -76,9 +77,9 @@ class DataPoint:
 
 
 class DataSeries:
-    def __init__(self, data):
+    def __init__(self, data, index=0):
         self.data = StockDataFrame.retype(data.copy())
-        self.index = 0
+        self.index = index
         self.indicators = []
         self.data.set_index('index')
         data_dict = self.data.to_dict(orient='split')
@@ -101,6 +102,9 @@ class DataSeries:
     def __iter__(self):
         self.index = 0
         return self
+
+    def is_end(self):
+        return self.index == self.data.shape[0]
 
     def __next__(self):
         value = self.get_dot(self.index)
@@ -155,16 +159,6 @@ class BT:
 
     def process_bar(self):
         pass
-        # if not self.position:
-        #     current_diff = self.ds[0].close - self.ds[-1].close
-        #     prev_diff = self.ds[-1].close - self.ds[-2].close
-        #     prev_prev_diff = self.ds[-2].close - self.ds[-3].close
-        #     if prev_prev_diff < 0 and prev_diff > 0 and current_diff > 0 and self.ds[0].volume > 5.0:
-        #         # print('BUY: price {} with {} shares on volume {}'.format(self.ds[0].close, 1000.0, self.ds[0].volume))
-        #         self.buy(self.ds[0].close, 1000.0)
-        # else:
-        #     if self.ds[0].close - self.ds[-1].close < 0:
-        #         self.sell(self.ds[0].close)
 
     def stop(self):
         self.end_balance = self.balance
