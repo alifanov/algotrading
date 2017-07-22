@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from keras.layers.core import Dense, Activation, Dropout
+from keras.optimizers import Adam
 from keras.layers.recurrent import LSTM
 from keras.models import Sequential
 from sklearn.metrics import mean_squared_error
@@ -14,26 +15,25 @@ from sklearn.externals import joblib
 np.random.seed(7)
 
 look_back = 1
-epochs = 500
+epochs = 1000
 batch_size = 32
+learning_rate = 1e-5
 
 
 def get_model():
     model = Sequential()
-    model.add(LSTM(
-        32,
-        input_shape=(look_back, 1),
-        return_sequences=True
-    ))
+    model.add(Dense(128, input_dim=look_back))
+    # model.add(Activation('relu'))
     model.add(Dropout(0.2))
-    model.add(LSTM(
-        64,
-        return_sequences=False
-    ))
+    model.add(Dense(128))
+    # model.add(Activation('relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(128))
+    # model.add(Activation('relu'))
     model.add(Dropout(0.2))
     model.add(Dense(1))
     model.add(Activation('linear'))
-    model.compile(loss='mse', optimizer='adam')
+    model.compile(loss='mse', optimizer=Adam(lr=learning_rate))
     return model
 
 
@@ -71,13 +71,10 @@ if __name__ == "__main__":
     trainX, trainY = create_dataset(train, look_back)
     testX, testY = create_dataset(test, look_back)
 
-    # reshape input of the LSTM to be format [samples, time steps, features]
-    trainX = np.reshape(trainX, (trainX.shape[0], trainX.shape[1], 1))
-    testX = np.reshape(testX, (testX.shape[0], testX.shape[1], 1))
-
     model = get_model()
-    model.fit(trainX, trainY, epochs=epochs, batch_size=batch_size)
+    history = model.fit(trainX, trainY, epochs=epochs, batch_size=batch_size)
     model.save('model.h5')
+    # plt.plot(history.history['loss'])
     # make predictions
     trainPredict = model.predict(trainX)
     testPredict = model.predict(testX)
