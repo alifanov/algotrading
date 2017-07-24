@@ -1,6 +1,6 @@
+import pandas as pd
 import gym
 from gym import error, spaces, utils
-from gym.utils import seeding
 
 from mikasa import *
 
@@ -15,7 +15,7 @@ class MikasaEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self):
-        self.action_space = spaces.Box(low=0, high=2.0, shape=(1,))
+        self.action_space = spaces.Discrete(3)
         self.observation_space = spaces.Box(low=0, high=1000.0, shape=(6, ))
 
     def _get_reward(self):
@@ -29,10 +29,12 @@ class MikasaEnv(gym.Env):
         return ob, reward, episode_over, {}
 
     def _take_action(self, action):
-        if ACTION_LOOKUP[action] == 1:
+        if ACTION_LOOKUP[action] == 'buy' and not self.bt.position:
             self.bt.buy(self.ds[0].close, self.balance)
-        if ACTION_LOOKUP[action] == 2:
+        if ACTION_LOOKUP[action] == 'sell' and self.bt.position:
             self.bt.sell(self.ds[0].close)
+        if not self.bt.ds.is_end():
+            self.bt.go()
 
     def _reset(self):
         df = pd.read_csv('btc_etc.csv').rename(columns={

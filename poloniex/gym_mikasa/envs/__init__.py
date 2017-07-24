@@ -1,1 +1,1 @@
-from gym_foo.envs.foo_env import MikasaEnv
+from gym_mikasa.envs.mikasa_env import MikasaEnv
