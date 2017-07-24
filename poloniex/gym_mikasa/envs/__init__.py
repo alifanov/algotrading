@@ -1,1 +1,2 @@
 from gym_mikasa.envs.mikasa_env import MikasaEnv
+from gym_mikasa.envs.mikasa_env_last_4 import MikasaLast4Env
