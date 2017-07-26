@@ -1,5 +1,5 @@
 import numpy as np
-from gym_mikasa.envs import MikasaLast4Env
+from gym_mikasa.envs import MikasaLast4ScaledEnv
 
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Flatten
@@ -10,7 +10,7 @@ from rl.policy import EpsGreedyQPolicy
 from rl.memory import SequentialMemory
 
 # create Mikasa gym env
-env = MikasaLast4Env()
+env = MikasaLast4ScaledEnv()
 np.random.seed(123)
 env.seed(123)
 nb_actions = env.action_space.n
@@ -33,4 +33,4 @@ target_model_update=1e-2, policy=policy)
 dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
 # run agent
-dqn.fit(env, nb_steps=50000, visualize=False, verbose=1)
+dqn.fit(env, nb_steps=500000, visualize=False, verbose=1)
