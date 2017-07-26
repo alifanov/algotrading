@@ -37,7 +37,7 @@ class MikasaLast4ScaledEnv(gym.Env):
             self.bt.go()
 
     def _reset(self):
-        df = pd.read_csv('btc_etc_first1000.csv').rename(columns={
+        df = pd.read_csv('btc_etc_first100.csv').rename(columns={
             'Close': 'close',
             'Date time': 'datetime',
             'Open': 'open',

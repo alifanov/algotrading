@@ -9,6 +9,8 @@ from rl.agents.dqn import DQNAgent
 from rl.policy import EpsGreedyQPolicy
 from rl.memory import SequentialMemory
 
+import matplotlib.pyplot as plt
+
 # create Mikasa gym env
 env = MikasaLast4ScaledEnv()
 np.random.seed(123)
@@ -29,8 +31,10 @@ model.add(Activation('linear'))
 policy = EpsGreedyQPolicy()
 memory = SequentialMemory(limit=50000, window_length=1)
 dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=100,
-target_model_update=1e-2, policy=policy)
+               target_model_update=1e-2, policy=policy)
 dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
 # run agent
-dqn.fit(env, nb_steps=500000, visualize=False, verbose=1)
+history = dqn.fit(env, nb_steps=200000, visualize=False, verbose=1)
+plt.plot(history.history['episode_reward'])
+plt.show()
