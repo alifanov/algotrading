@@ -16,6 +16,8 @@ env = gym.make(ENV_NAME)
 np.random.seed(123)
 env.seed(123)
 nb_actions = env.action_space.n
+print('Actions: ', nb_actions)
+print('Observation: ', (1,) + env.observation_space.shape)
 
 model = Sequential()
 model.add(Flatten(input_shape=(1,) + env.observation_space.shape))

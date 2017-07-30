@@ -1,15 +1,13 @@
-import numpy as np
-from gym_mikasa.envs import MikasaLast4ScaledEnv
-
-from keras.models import Sequential
-from keras.layers import Dense, Activation, Flatten
-from keras.optimizers import Adam
-
-from rl.agents.dqn import DQNAgent
-from rl.policy import EpsGreedyQPolicy
-from rl.memory import SequentialMemory
-
 import matplotlib.pyplot as plt
+import numpy as np
+from keras.layers import Dense, Activation, Flatten
+from keras.models import Sequential
+from keras.optimizers import Adam
+from rl.agents.dqn import DQNAgent
+from rl.memory import SequentialMemory
+from rl.policy import EpsGreedyQPolicy
+
+from poloniex.gym_mikasa import MikasaLast4ScaledEnv
 
 # create Mikasa gym env
 env = MikasaLast4ScaledEnv()

@@ -16,3 +16,5 @@ pandas_datareader
 plotly
 stockstats
 keras-rl
+git+https://github.com/alifanov/mikasa.git
+git+https://github.com/alifanov/mikasa_gym.git

@@ -7,10 +7,10 @@ from rl.agents.dqn import DQNAgent
 from rl.memory import SequentialMemory
 from rl.policy import EpsGreedyQPolicy
 
-from poloniex.gym_mikasa import MikasaLast4Env
+from gym_mikasa.envs import MikasaRewardLastTradeEnv
 
 # create Mikasa gym env
-env = MikasaLast4Env()
+env = MikasaRewardLastTradeEnv()
 np.random.seed(123)
 env.seed(123)
 nb_actions = env.action_space.n
