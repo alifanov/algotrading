@@ -1,5 +1,14 @@
 import pandas as pd
-from mikasa import BT, DataSeries, EMAIndicator
+from mikasa import BT, DataSeries, BaseIndicator
+
+
+class EMAIndicator(BaseIndicator):
+    def __init__(self, period=14, title='ema'):
+        super(EMAIndicator, self).__init__(title)
+        self.period = period
+
+    def get_data(self, df, field_name):
+        return df[field_name].ewm(span=self.period, ignore_na=False, adjust=True, min_periods=self.period).mean()
 
 
 class EmaCrossBT(BT):
@@ -39,7 +48,10 @@ if __name__ == "__main__":
             if bt.get_profit() > best_profit:
                 best_profit = bt.get_profit()
                 best_params = (fp, sp)
-            print('EMA Cross: ({}, {}): Profit: ${:+.2f} | Best profit: ${:.2f} with fp: {} sp: {}'.format(fp, sp, bt.get_profit(),
-                                                                                                best_profit,
-                                                                                                best_params[0],
-                                                                                                best_params[1]))
+            print('EMA Cross: ({}, {}): Profit: ${:+.2f} | Best profit: ${:.2f} with fp: {} sp: {}'.format(fp, sp,
+                                                                                                           bt.get_profit(),
+                                                                                                           best_profit,
+                                                                                                           best_params[
+                                                                                                               0],
+                                                                                                           best_params[
+                                                                                                               1]))
