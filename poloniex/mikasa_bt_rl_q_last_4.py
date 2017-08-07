@@ -8,9 +8,10 @@ from keras.layers import Dense
 from keras.models import Sequential
 from keras.optimizers import Adam
 
-from gym_mikasa.envs import MikasaLast4Env
+from mikasa_gym import MikasaEnv
 
-EPISODES = 3000
+EPISODES = 10000
+LOOK_BACK = 4
 
 random.seed(7)
 
@@ -22,7 +23,7 @@ class DQNAgent:
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95  # discount rate
         self.epsilon = 1.0  # exploration rate
-        self.epsilon_min = 0.0001
+        self.epsilon_min = 0.00001
         self.epsilon_decay = 0.997
         self.learning_rate = 0.001
         self.model = self._build_model()
@@ -30,6 +31,7 @@ class DQNAgent:
     def _build_model(self):
         # Neural Net for Deep-Q learning Model
         model = Sequential()
+        model.add(Dense(128, input_dim=self.state_size, activation='relu'))
         model.add(Dense(64, input_dim=self.state_size, activation='relu'))
         model.add(Dense(32, activation='relu'))
         model.add(Dense(self.action_size, activation='linear'))
@@ -61,12 +63,12 @@ class DQNAgent:
 
 
 if __name__ == "__main__":
-    env = MikasaLast4Env()
-    state_size = env.observation_space.shape[0]
+    env = MikasaEnv(source_filename='btc_etc_first100.csv', look_back=LOOK_BACK)
+    state_size = (env.observation_space.shape[0] - 1)*LOOK_BACK + 1
     action_size = env.action_space.n
     agent = DQNAgent(state_size, action_size)
     done = False
-    batch_size = 1000
+    batch_size = 100
 
     history = []
 
@@ -74,7 +76,7 @@ if __name__ == "__main__":
         state = env.reset()
         state = np.reshape(state, [1, state_size])
         reward_sum = 0.0
-        for time in range(1010):
+        for time in range(110):
             action = agent.act(state)
             next_state, reward, done, _ = env.step(action)
             reward_sum += reward
@@ -82,7 +84,7 @@ if __name__ == "__main__":
             agent.remember(state, action, reward, next_state, done)
             state = next_state
             if done:
-                print("episode: {}/{}, score: {:+.2f}, e: {:.3f}"
+                print("episode: {}/{}, score: {:+.2f}, e: {:.6f}"
                       .format(e, EPISODES, reward_sum, agent.epsilon))
                 history.append(reward_sum)
                 break
