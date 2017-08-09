@@ -149,3 +149,5 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+poloniex/config.py
