@@ -8,9 +8,9 @@ from poloniex import Poloniex
 from urllib.parse import urlencode
 
 MIN_SPREAD = 1e-4
-TRADE_VOLUME = 5e-3
+TRADE_VOLUME = 1e-2
 
-polo = Poloniex(config.POLONIEX_API_KEY, config.POLONIEX_API_SECRET)
+polo = Poloniex(config.POLONIEX_API_KEY, config.POLONIEX_API_SECRET.encode('utf-8'))
 
 
 class YobitAPI:
@@ -111,20 +111,19 @@ def arbitrage(pair):
     buy_price = float(lowest_ask)
 
     spread = sell_price - buy_price
-    print(spread)
     if spread > MIN_SPREAD:
         print('Spread:\t{:.6f}\tVolume:\t{:.6f}'.format(spread, min(ask_vol, bid_vol)))
-        # yoapi = YobitAPI(config.API_KEY, config.API_SECRET)
-        # yoapi.trade(_pair, 'buy', buy_price, TRADE_VOLUME)
-        # print('Buy ({}): {} for {}'.format(_pair, TRADE_VOLUME, buy_price))
-        # print(yoapi.withdraw(_target_coin, TRADE_VOLUME, config.TARGET_ETH_ADDRESS))
-        # print('Transfer {} {} to {}'.format(TRADE_VOLUME, _target_coin, config.TARGET_ETH_ADDRESS))
+        yoapi = YobitAPI(config.API_KEY, config.API_SECRET)
+        yoapi.trade(_pair, 'buy', buy_price, TRADE_VOLUME)
+        print('Buy ({}): {} for {}'.format(_pair, TRADE_VOLUME, buy_price))
+        print(yoapi.withdraw(_target_coin, TRADE_VOLUME, config.TARGET_ETH_ADDRESS))
+        print('Transfer {} {} to {}'.format(TRADE_VOLUME, _target_coin, config.TARGET_ETH_ADDRESS))
 
-        polo.sell(pair, sell_price, TRADE_VOLUME)
+        polo.sell(pair.encode('utf-8'), sell_price, TRADE_VOLUME)
         print('Sell ({}): {} for {}'.format(pair, TRADE_VOLUME, sell_price))
-        balance = polo.returnBalances()[_base_coin]
-        polo.withdraw(_base_coin, balance, config.TARGET_BTC_ADDRESS)
-        print('Transfer {} {} to {}'.format(balance, _base_coin, config.TARGET_BTC_ADDRESS))
+        balance = polo.returnBalances()[_base_coin.upper()]
+        polo.withdraw(_base_coin.upper(), balance, config.TARGET_BTC_ADDRESS)
+        print('Transfer {} {} to {}'.format(balance, _base_coin.upper(), config.TARGET_BTC_ADDRESS))
 
 
 if __name__ == "__main__":
