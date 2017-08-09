@@ -151,3 +151,4 @@ ENV/
 .ropeproject
 
 poloniex/config.py
+/poloniex/config.py
