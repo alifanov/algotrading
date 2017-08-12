@@ -9,7 +9,7 @@ statsmodels
 h5py
 evostra
 gym[all]
-poloniex
+git+https://github.com/s4w3d0ff/python-poloniex.git
 pyalgotrade
 git+https://github.com/ematvey/pybacktest.git
 pandas_datareader
@@ -18,3 +18,4 @@ stockstats
 keras-rl
 git+https://github.com/alifanov/mikasa.git
 git+https://github.com/alifanov/mikasa_gym.git
+seaborn
