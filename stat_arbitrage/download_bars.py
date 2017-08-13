@@ -24,7 +24,7 @@ class PoloniexApi:
 
     def get_chart_data(self, pair):
         end = int(time.time())
-        start = end - 60*60*24*30
+        start = end - 60*60*24*90
         return self.api.returnChartData(pair, period=300, start=start, end=end)
 
 
