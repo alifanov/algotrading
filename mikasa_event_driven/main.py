@@ -1,16 +1,16 @@
 import time
-from Queue import Queue
+import queue
 
 from data import HistoricCSVDataHandler
 from portfolio import NaivePortfolio
 from strategy import BuyAndHoldStrategy
 from execution import SimulatedExecutionHandler
 
-events = Queue(100)
+events = queue.Queue(100)
 
 broker = SimulatedExecutionHandler(events)
 bars = HistoricCSVDataHandler(events, '../datasets/', ['btc_etc'])
-strategy = BuyAndHoldStrategy(events, bars)
+strategy = BuyAndHoldStrategy(bars, events)
 port = NaivePortfolio(bars, events, None, 1000.0)
 
 
@@ -26,7 +26,7 @@ def run(heartbeat=3):
         while True:
             try:
                 event = events.get(False)
-            except Queue.Empty:
+            except queue.Empty:
                 break
             else:
                 if event is not None:
@@ -44,7 +44,9 @@ def run(heartbeat=3):
                         port.update_fill(event)
 
         # 3-sec heartbeat
-        time.sleep(heartbeat)
+        # time.sleep(heartbeat)
+    port.create_equity_curve_dataframe()
+    print(port.output_summary_stats())
 
 if __name__ == "__main__":
     run()

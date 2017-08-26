@@ -62,11 +62,13 @@ class HistoricCSVDataHandler(DataHandler):
         comb_index = None
         for s in self.symbol_list:
             # Load the CSV file with no header information, indexed on date
+            fname = os.path.join(self.csv_dir, '%s.csv' % s)
+
             self.symbol_data[s] = pd.read_csv(
-                os.path.join(self.csv_dir, '%s.csv' % s),
-                header=0, index_col=0,
-                names=['datetime', 'open', 'low', 'high', 'close', 'volume']
-            )
+                fname,
+                header=0,
+                index_col=0
+            )[['open', 'low', 'high', 'close', 'volume']]
 
             # Combine the index to pad forward values
             if comb_index is None:
@@ -109,7 +111,7 @@ class HistoricCSVDataHandler(DataHandler):
         """
         for s in self.symbol_list:
             try:
-                bar = self._get_new_bar(s).next()
+                bar = next(self._get_new_bar(s))
             except StopIteration:
                 self.continue_backtest = False
             else:

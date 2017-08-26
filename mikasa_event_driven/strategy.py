@@ -1,8 +1,3 @@
-import datetime
-import numpy as np
-import pandas as pd
-import Queue
-
 from abc import ABCMeta, abstractmethod
 
 from event import SignalEvent
@@ -69,6 +64,6 @@ class BuyAndHoldStrategy(Strategy):
                 if bars is not None and bars != []:
                     if self.bought[s] == False:
                         # (Symbol, Datetime, Type = LONG, SHORT or EXIT)
-                        signal = SignalEvent(bars[0][0], bars[0][1], 'LONG')
+                        signal = SignalEvent(bars[0][0], bars[0][1], 'LONG', 1.0)
                         self.events.put(signal)
                         self.bought[s] = True
