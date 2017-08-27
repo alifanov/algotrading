@@ -3,15 +3,20 @@ import queue
 
 from data import HistoricCSVDataHandler
 from portfolio import NaivePortfolio
-from strategy import BuyAndHoldStrategy
+from strategy import BuyAndHoldStrategy, StatArbitrageStrategy
 from execution import SimulatedExecutionHandler
 
-events = queue.Queue(100)
+events_queue = queue.Queue(100)
 
-broker = SimulatedExecutionHandler(events)
-bars = HistoricCSVDataHandler(events, '../datasets/', ['btc_etc'])
-strategy = BuyAndHoldStrategy(bars, events)
-port = NaivePortfolio(bars, events, None, 1000.0)
+broker = SimulatedExecutionHandler(events_queue)
+bars = HistoricCSVDataHandler(events_queue, './datasets/', ['BTC_ETC', 'BTC_LTC'], fields=[
+    'open',
+    'high',
+    'low',
+    'close',
+])
+strategy = StatArbitrageStrategy(bars, events_queue)
+port = NaivePortfolio(bars, events_queue, None, 1000.0)
 
 
 def run(heartbeat=3):
@@ -25,7 +30,7 @@ def run(heartbeat=3):
         # Handle the events
         while True:
             try:
-                event = events.get(False)
+                event = events_queue.get(False)
             except queue.Empty:
                 break
             else:
